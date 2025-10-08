@@ -38,7 +38,8 @@ class TableRedBlockSceneCfg(InteractiveSceneCfg): # inherit from the interactive
                                                 rot=[1.0, 0.0, 0.0, 0.0]), # initial rotation [x, y, z, w]
         spawn=UsdFileCfg(
             usd_path=f"{project_root}/assets/objects/table_with_yellowbox.usd",    # table model file
-            # rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),    # set to kinematic object
+            #rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),    # set to kinematic object
+            
         ),
     )
     # Object
@@ -51,6 +52,7 @@ class TableRedBlockSceneCfg(InteractiveSceneCfg): # inherit from the interactive
         ),
         spawn=sim_utils.CuboidCfg(
             size=(0.06, 0.06, 0.06),
+            activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
                 retain_accelerations=False,
@@ -82,14 +84,14 @@ class TableRedBlockSceneCfg(InteractiveSceneCfg): # inherit from the interactive
     target_square = RigidObjectCfg(
         prim_path="/World/envs/env_.*/TargetSquare",
         init_state=RigidObjectCfg.InitialStateCfg(
-            pos=[-4.10, -3.90, 0.84],  # pozice na stole
+            pos=[-4.195, -3.945, 0.795],  # pozice na stole
             rot=[1.0, 0.0, 0.0, 0.0],
         ),
         spawn=sim_utils.CuboidCfg(
             size=(0.08, 0.08, 0.001),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
             collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=False),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.5, 0.0)),
         ),
     )
 
@@ -103,11 +105,11 @@ class TableRedBlockSceneCfg(InteractiveSceneCfg): # inherit from the interactive
 
     # Lights
     # 4. light configuration
-    # light = AssetBaseCfg(
-    #     prim_path="/World/light",   # light in the scene
-    #     spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), # light color (white)
-    #                                  intensity=3000.0),    # light intensity
-    # )
+    light = AssetBaseCfg(
+        prim_path="/World/light",   # light in the scene
+        spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), # light color (white)
+                                     intensity=3000.0),    # light intensity
+    )
 
 
 

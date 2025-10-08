@@ -35,7 +35,18 @@ def distance_hand_object(env, env_ids=None, asset_cfg=None, palm_link_name="righ
     palm_pos = env.scene["robot"].data.body_pos_w[env_ids, link_id, :]  # (N,3)
     obj_pos = env.scene[asset_cfg.name].data.body_pos_w[env_ids, 0, :]  # (N,3)
 
-    return torch.norm(palm_pos - obj_pos, dim=-1)
+        # vypočítej vzdálenost
+    distances = torch.norm(palm_pos - obj_pos, dim=-1)  # (N,)
+
+    # --- DEBUG výpis ---
+    # každých pár kroků (ne každou ms), aby to nebylo zahlcené
+    if getattr(env, "common_step_counter", 0) % 10 == 0:
+        dist_cpu = distances.detach().cpu().numpy()
+        print("\n[DEBUG] Distance hand ↔ object per env:")
+        for i, d in zip(env_ids.tolist(), dist_cpu):
+            print(f"  Env {i:02d}: {d:.4f} m")
+
+    return distances
 
 
 
@@ -64,6 +75,37 @@ def is_grasped(env, env_ids=None, object_cfg=None, table_z=0.84, lift_eps=0.02):
     still = torch.norm(obj_vel, dim=-1) < 0.2
 
     return (lifted & still).bool()
+
+def is_grasped_stable(
+    env,
+    env_ids=None,
+    object_cfg=None,
+    contact_sensor_name: str = "cube_hand_contacts",
+    contact_force_eps: float = 0.8,      # N – práh detekce kontaktu s rukou
+    vel_thresh: float = 0.10,            # m/s – kostka se moc nehýbe
+    grasp_height_offset: float = 0.02    # m – nad stolem
+):
+    if env_ids is None:
+        env_ids = torch.arange(env.num_envs, device=env.device)
+
+    # 1) kontakty kostka×ruka (filtrované)
+    sensor = env.scene.sensors[contact_sensor_name]
+    # force_matrix_w: (num_env, B=1, M, 3) => vezmeme normu přes xyz a any() přes M
+    F = sensor.data.force_matrix_w[env_ids, 0]          # (num_env, M, 3)
+    has_hand_contact = torch.any(torch.linalg.norm(F, dim=-1) > contact_force_eps, dim=-1)
+
+    # 2) klidnost a výška nad stolem
+    obj_pos = env.scene[object_cfg.name].data.body_pos_w[env_ids, 0, :]
+    obj_vel = torch.linalg.norm(env.scene[object_cfg.name].data.body_vel_w[env_ids, 0, :], dim=-1)
+    if hasattr(env.scene["packing_table"], "data"):
+        table_z = env.scene["packing_table"].data.body_pos_w[env_ids, 0, 2]
+    else:
+        table_z = torch.full((len(env_ids),), 0.84, device=env.device)
+
+    above_table = obj_pos[:, 2] > (table_z + grasp_height_offset)
+    still = obj_vel < vel_thresh
+
+    return (has_hand_contact & above_table & still).float()
 
 def is_placed(env, env_ids=None, object_cfg=None, target_cfg=None,
               xy_tol=0.03, z_tol=0.03, vel_tol=0.05):
@@ -104,3 +146,25 @@ def target_root_pos(env, env_ids=None, asset_cfg=None):
 def object_below_height(env, asset_cfg, min_height=0.6):
     obj_pos = env.scene[asset_cfg.name].data.root_pos_w
     return obj_pos[:, 2] < min_height
+
+
+
+def self_collision_penalty(env, asset_cfg, force_threshold: float = 1.0):
+    """
+    Penalizace za kolizi robota se sebou samým.
+    """
+    contact_forces = env.scene[asset_cfg.name].data.net_contact_forces_w
+    force_norm = torch.norm(contact_forces, dim=-1)
+    collisions = force_norm > force_threshold
+    penalty = collisions.float().sum(dim=-1) * -1.0
+    return penalty
+
+
+def has_self_collision(env, asset_cfg, threshold: float = 50.0):
+    """
+    Ukončí epizodu, pokud robot koliduje sám se sebou s velkou silou.
+    """
+    contact_forces = env.scene[asset_cfg.name].data.net_contact_forces_w
+    force_norm = torch.norm(contact_forces, dim=-1)
+    max_force, _ = torch.max(force_norm, dim=-1)
+    return max_force > threshold

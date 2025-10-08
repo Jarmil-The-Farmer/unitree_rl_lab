@@ -23,6 +23,7 @@ from .base_scene_pickplace_redblock import TableRedBlockSceneCfg
 from .robot_configs import G1RobotPresets
 from unitree_rl_lab.tasks.locomotion import mdp
 from .camera_configs import CameraPresets
+from isaaclab.sensors import ContactSensorCfg
 
 # -----------------------------------------------------------------------------
 # Scene
@@ -34,6 +35,7 @@ class PickPlaceSceneCfg(TableRedBlockSceneCfg):
     robot: ArticulationCfg = G1RobotPresets.g1_29dof_inspire_base_fix(
         init_pos=(-4.2, -3.7, 0.76),
         init_rot=(0.7071, 0, 0, -0.7071),
+        #self_collisions=True,
     )
 
     # Add target area (green square) on the table
@@ -42,8 +44,20 @@ class PickPlaceSceneCfg(TableRedBlockSceneCfg):
     # )
 
     head_camera = CameraPresets.g1_front_camera()
-    left_wrist_camera = CameraPresets.left_inspire_wrist_camera()
-    right_wrist_camera = CameraPresets.right_inspire_wrist_camera()
+    #left_wrist_camera = CameraPresets.left_inspire_wrist_camera()
+    #right_wrist_camera = CameraPresets.right_inspire_wrist_camera()
+
+    cube_hand_contacts = ContactSensorCfg(
+        # POZOR: nahraď prim path kostky podle tvého souboru.
+        # V šablonách je to často něco jako "{ENV_REGEX_NS}/RedCube" nebo "{ENV_REGEX_NS}/Cube"
+        prim_path="/World/envs/env_.*/Object",
+        update_period=0.0,
+        history_length=4,
+        debug_vis=True,
+        # filtruj JEN kontakty s pravou rukou/prsty (regex podle tvého názvosloví článků)
+        filter_prim_paths_expr=["/World/envs/env_.*/Robot/(right_.*|R_.*)"],
+    )
+
 
 
 # -----------------------------------------------------------------------------
@@ -79,11 +93,11 @@ class ObservationsCfg:
         joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel)
 
         # Object (cube)
-        cube_position = ObsTerm(func=mdp.object_root_pos, params={"asset_cfg": SceneEntityCfg("object")})
-        cube_velocity = ObsTerm(func=mdp.object_root_vel, params={"asset_cfg": SceneEntityCfg("object")})
+        #cube_position = ObsTerm(func=mdp.object_root_pos, params={"asset_cfg": SceneEntityCfg("object")})
+        #cube_velocity = ObsTerm(func=mdp.object_root_vel, params={"asset_cfg": SceneEntityCfg("object")})
 
         # Target area
-        target_position = ObsTerm(func=mdp.target_root_pos, params={"asset_cfg": SceneEntityCfg("target_square")})
+        #target_position = ObsTerm(func=mdp.target_root_pos, params={"asset_cfg": SceneEntityCfg("target_square")})
 
         # Last action (helps policy with dynamics)
         last_action = ObsTerm(func=mdp.last_action)
@@ -116,12 +130,25 @@ class RewardsCfg:
     # Distance hand → cube
     reach_cube = RewTerm(
         func=mdp.distance_hand_object,
-        weight=-1.0,
+        weight=-3.0,
         params={"asset_cfg": SceneEntityCfg("object")},
     )
 
     # Reward when cube is stably grasped
-    grasp = RewTerm(func=mdp.is_grasped, weight=2.0, params={"object_cfg": SceneEntityCfg("object")})
+    grasp_stable = RewTerm(
+        func=mdp.is_grasped_stable,
+        weight=6.0,
+        params={
+            "object_cfg": SceneEntityCfg("object"),
+        },
+    )
+
+    # self_collision = RewTerm(
+    #     func=mdp.self_collision_penalty,
+    #     weight=-2.0,
+    #     params={"asset_cfg": SceneEntityCfg("robot")},
+    # )
+
 
     # Encourage moving cube closer to target
     move_to_target = RewTerm(
@@ -140,6 +167,15 @@ class RewardsCfg:
     # Penalize action jitter
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
 
+    
+
+    # prevent erratic movement
+    joint_vel = RewTerm(
+        func=mdp.joint_vel_l2,
+        weight=-1e-4,
+        params={"asset_cfg": SceneEntityCfg("robot")}
+    )
+
 
 # -----------------------------------------------------------------------------
 # Terminations
@@ -157,6 +193,12 @@ class TerminationsCfg:
         params={"asset_cfg": SceneEntityCfg("object"), "min_height": 0.6},  # výška stolu ~0.75, dej trochu rezervu
     )
 
+    # Terminations
+    # self_collision = DoneTerm(
+    #     func=mdp.has_self_collision,
+    #     params={"asset_cfg": SceneEntityCfg("robot"), "threshold": 50.0},
+    # )
+
 
 # -----------------------------------------------------------------------------
 # Final Environment Config
@@ -165,7 +207,7 @@ class TerminationsCfg:
 class PickPlaceRedBlockRLEnvCfg(ManagerBasedRLEnvCfg):
     """RL Environment for Pick&Place Red Block with G1 + Inspire Hands."""
 
-    scene: PickPlaceSceneCfg = PickPlaceSceneCfg(num_envs=16, env_spacing=2.5)
+    scene: PickPlaceSceneCfg = PickPlaceSceneCfg(num_envs=2, env_spacing=2.5)
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     rewards: RewardsCfg = RewardsCfg()
@@ -173,10 +215,10 @@ class PickPlaceRedBlockRLEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         print(">>> Scene config entities:", list(self.scene.__dict__.keys()))
-        self.decimation = 2
-        self.episode_length_s = 10.0
-        self.sim.dt = 0.005
-        self.sim.render_interval = self.decimation
+        self.decimation = 1
+        self.episode_length_s = 1
+        self.sim.dt = 0.01
+        self.sim.render_interval = 2
 
 @configclass
 class PickPlaceRedBlockRLEnvPlayCfg(PickPlaceRedBlockRLEnvCfg):

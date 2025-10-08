@@ -15,48 +15,21 @@ class PickPlaceRedBlockRLEnv(ManagerBasedRLEnv):
     def __init__(self, cfg: PickPlaceRedBlockRLEnvCfg, **kwargs):
         super().__init__(cfg, **kwargs)
 
-        # ---- Marker prototypy: pořadí určuje indexy (neg=0, pos=1, zero=2) ----
-        marker_cfg = VisualizationMarkersCfg(
-            prim_path="/Visuals/RewardMarkers",
-            markers={
-                "neg": sim_utils.SphereCfg(
-                    radius=0.06,
-                    visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.2, 0.2)),
-                ),
-                "pos": sim_utils.SphereCfg(
-                    radius=0.06,
-                    visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 1.0, 0.2)),
-                ),
-                "zero": sim_utils.SphereCfg(
-                    radius=0.06,
-                    visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.6, 0.6, 0.6)),
-                ),
-            },
-        )
-        self._reward_markers = VisualizationMarkers(marker_cfg)
-
-        # předpočítáme index „pelvis“ linku (pro pozici nad robotem)
-        self._pelvis_id = self.scene["robot"].data.body_names.index("pelvis")
-        self._offset = torch.tensor([0.0, 0.0, 1.5], device=self.device)
-
-        # pro mapování indexů markerů (neg=0, pos=1, zero=2)
-        self._idx_neg = torch.tensor(0, device=self.device, dtype=torch.long)
-        self._idx_pos = torch.tensor(1, device=self.device, dtype=torch.long)
-        self._idx_zero = torch.tensor(2, device=self.device, dtype=torch.long)
 
     def step(self, action):
+        # --- zavolej standardní krok ---
         obs, rew, terminated, truncated, info = super().step(action)
 
-        # Pozice markerů: nad „pelvis“ každého roba
-        pelvis_pos = self.scene["robot"].data.body_pos_w[:, self._pelvis_id, :]  # (N,3)
-        translations = pelvis_pos + self._offset  # (N,3)
-
-        # Vyber prototyp podle znamenka odměny (indexy dle pořadí v markers dict)
-        idx = torch.where(
-            rew > 1e-5, self._idx_pos, torch.where(rew < -1e-5, self._idx_neg, self._idx_zero)
-        )  # (N,)
-
-        # vykresli (orientace a scale nejsou nutné, pokud je nechceš měnit)
-        self._reward_markers.visualize(translations=translations, marker_indices=idx)
+        # --- každých X kroků vypiš podrobné rewardy pro všechny envy ---
+        if self.common_step_counter % 200 == 0:  # interval ladění
+            num_envs = self.num_envs
+            print(f"\n[Step {self.common_step_counter}] Reward breakdown:")
+            for env_i in range(num_envs):
+                terms = self.reward_manager.get_active_iterable_terms(env_i)
+                total = sum(val[0] for _, val in terms)
+                print(f"  Env {env_i:02d} | total = {total:+.3f}")
+                for name, val in terms:
+                    print(f"     {name:<20}: {val[0]:+.4f}")
+            print("------------------------------------------------------")
 
         return obs, rew, terminated, truncated, info

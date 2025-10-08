@@ -140,6 +140,26 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
+    # ---- odemkni render loop (zruš FPS limity na všech vláknech) ----
+    import carb.settings as cs
+    s = cs.get_settings()
+
+    # Vypnout rate limit (FPS limiter) – main/present/rendering thread
+    for key in (
+        "/app/runLoops/main/rateLimitEnabled",
+        "/app/runLoops/present/rateLimitEnabled",
+        "/app/runLoops/rendering_0/rateLimitEnabled",
+    ):
+        s.set_bool(key, False)
+
+    # Bezpečnostní záchrana: kdyby některý limit zůstal aktivní, dej mu vysokou frekvenci
+    s.set_int("/app/runLoops/main/rateLimitFrequency", 1000)
+    s.set_int("/app/runLoops/present/rateLimitFrequency", 1000)
+    s.set_int("/app/runLoops/rendering_0/rateLimitFrequency", 1000)
+
+    # Volitelné: vypnout RTX Eco mode (zabrání auto-pauzám renderu)
+    s.set_bool("/rtx/ecoMode/enabled", False)
+
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
         env = multi_agent_to_single_agent(env)

@@ -9,9 +9,9 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class BasePPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
+    num_steps_per_env = 8 # default 24
     max_iterations = 150000
-    save_interval = 1000
+    save_interval = 1000 # default 100 !!!! interval of saving big model file!
     experiment_name = ""  # same as task name
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
@@ -25,7 +25,7 @@ class BasePPORunnerCfg(RslRlOnPolicyRunnerCfg):
         use_clipped_value_loss=True,
         clip_param=0.2,
         entropy_coef=0.01,
-        num_learning_epochs=5,
+        num_learning_epochs=4,
         num_mini_batches=4,
         learning_rate=1.0e-3,
         schedule="adaptive",
