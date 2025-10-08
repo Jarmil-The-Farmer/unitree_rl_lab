@@ -178,7 +178,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
-    export_deploy_cfg(env.unwrapped, log_dir)
+    #export_deploy_cfg(env.unwrapped, log_dir)
     # copy the environment configuration file to the log directory
     shutil.copy(
         inspect.getfile(env_cfg.__class__),
