@@ -80,6 +80,12 @@ def image_flattened(env, sensor_cfg, data_type="rgb"):
     img = mdp.image(env, sensor_cfg=sensor_cfg, data_type=data_type)  # (N,H,W,C)
     return torch.flatten(img, start_dim=1)
 
+def image_tensor(env, sensor_cfg, data_type="rgb"):
+    """Return camera image as (N, C, H, W) tensor normalized to [0,1]."""
+    img = mdp.image(env, sensor_cfg=sensor_cfg, data_type=data_type)  # (N, H, W, C)
+    img = img.permute(0, 3, 1, 2)  # -> (N, C, H, W)
+    return img / 255.0
+
 # -----------------------------------------------------------------------------
 # Observations
 # -----------------------------------------------------------------------------
@@ -103,9 +109,14 @@ class ObservationsCfg:
         last_action = ObsTerm(func=mdp.last_action)
 
         head_rgb = ObsTerm(
-            func=image_flattened,
+            func=image_tensor,
             params={"sensor_cfg": SceneEntityCfg("head_camera"), "data_type": "rgb"},
         )
+
+        # head_rgb = ObsTerm(
+        #     func=image_flattened,
+        #     params={"sensor_cfg": SceneEntityCfg("head_camera"), "data_type": "rgb"},
+        # )
         # right_wrist_rgb = ObsTerm(
         #     func=mdp.image,
         #     params={"sensor_cfg": SceneEntityCfg("right_wrist_camera"), "data_type": "rgb"},
