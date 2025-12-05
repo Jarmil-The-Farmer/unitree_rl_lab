@@ -164,6 +164,39 @@ def main():
         Se2KeyboardCfg()
     )
 
+    import numpy as np
+    from isaacsim.sensors.camera import Camera
+    from isaacsim.core.api import World
+    import matplotlib.pyplot as plt
+    import isaacsim.core.utils.numpy.rotations as rot_utils
+
+    import omni.usd
+    from pxr import UsdGeom, Gf
+    stage = omni.usd.get_context().get_stage()
+
+
+    # robot link
+    robot_head = stage.GetPrimAtPath("/World/envs/env_0/Robot/d435_link")
+
+    # vytvoř nový camera prim
+    cam_prim = stage.DefinePrim("/World/envs/env_0/Robot/d435_link/front_cam", "Camera")
+
+    # nastav relativní pozici kamery (lokální frame d435_linku)
+    xform = UsdGeom.Xformable(cam_prim)
+    xform.AddTranslateOp().Set(Gf.Vec3d(0.0, 0.0, 0.1))
+    xform.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, 0))
+
+    camera = Camera(
+        prim_path="/World/envs/env_0/Robot/d435_link/front_cam",  # cesta primu; ujisti se, že nekoliduje s existujícími primy
+        position=np.array([0.0, 0.0, 0.5]),  # příklad pozice (v relat. frame světa nebo relativně k robotovi)
+        resolution=(1280, 720),
+        orientation=rot_utils.euler_angles_to_quats(np.array([0.0, 0.0, 0.0]), degrees=True),
+        frequency=10  # snímků za sekundu
+    )
+    camera.initialize()
+    #camera.add_motion_vectors_to_frame()
+    plt.ion()
+
     # simulate environment
     while simulation_app.is_running():
         start_time = time.time()
@@ -175,6 +208,15 @@ def main():
         cmd[0] = torch.tensor(device_action, device=env.unwrapped.device)
 
         #print(cmd)
+
+        rgb = camera.get_rgba()
+        #print(rgb)
+        #print(rgb.shape)
+        if rgb.shape[0] > 0:
+            plt.clf()
+            plt.imshow(rgb)
+        #print(camera.get_current_frame())
+            plt.pause(0.001)     # nechá GUI "nadechnout"
 
         # run everything in inference mode
         with torch.inference_mode():
