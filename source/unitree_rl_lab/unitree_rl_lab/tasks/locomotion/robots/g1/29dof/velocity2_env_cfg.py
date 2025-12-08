@@ -1,5 +1,7 @@
 import math
 
+import torch
+
 import isaaclab.sim as sim_utils
 import isaaclab.terrains as terrain_gen
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg
@@ -22,6 +24,9 @@ from unitree_rl_lab.assets.robots.unitree import UNITREE_G1_29DOF_CFG as ROBOT_C
 from unitree_rl_lab.tasks.locomotion import mdp
 
 from .camera_configs import CameraBaseCfg
+
+from .robot_configs import G1RobotPresets
+from .camera_configs import CameraPresets
 
 COBBLESTONE_ROAD_CFG = terrain_gen.TerrainGeneratorCfg(
     size=(8.0, 8.0),
@@ -64,7 +69,12 @@ class RobotSceneCfg(InteractiveSceneCfg):
         debug_vis=False,
     )
     # robots
-    robot: ArticulationCfg = ROBOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    #robot: ArticulationCfg = ROBOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    robot: ArticulationCfg = G1RobotPresets.g1_29dof_inspire_wholebody(
+         init_pos=(-4.2, -3.7, 0.76),
+         init_rot=(0.7071, 0, 0, -0.7071),
+     )
+
 
     # # sensors
     # height_scanner = RayCasterCfg(
@@ -76,7 +86,8 @@ class RobotSceneCfg(InteractiveSceneCfg):
     #     mesh_prim_paths=["/World/ground"],
     # )
 
-    # head_camera = CameraBaseCfg.get_camera_config(width=1280, height=720)
+    #head_camera = CameraBaseCfg.get_camera_config(prim_path="{ENV_REGEX_NS}/Robot/front_cam", width=1280, height=720)
+    head_camera = CameraPresets.g1_front_camera()
 
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
     # lights
@@ -87,6 +98,20 @@ class RobotSceneCfg(InteractiveSceneCfg):
             texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
         ),
     )
+
+from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.assets import Articulation
+from isaacsim.sensors.camera import Camera
+
+def render_camera(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("head_camera")):
+    camera: Camera = env.scene[asset_cfg.name]
+
+    print(camera)
+
+    # return zeros
+    return torch.zeros(env.num_envs, device=env.device)
 
 
 @configclass

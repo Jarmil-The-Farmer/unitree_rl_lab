@@ -5,8 +5,9 @@ public camera configuration
 include the basic configuration for different types of cameras, support scene-specific parameter customization
 """
 
+from isaaclab.sensors.camera.tiled_camera_cfg import TiledCameraCfg
 import isaaclab.sim as sim_utils
-from isaaclab.sensors import CameraCfg
+from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 import os
 
@@ -32,7 +33,7 @@ class CameraBaseCfg:
         pos_offset: tuple = (0, 0.0, 0),
         rot_offset: tuple = (0.5, -0.5, 0.5, -0.5),
         data_types: list = None
-    ) -> CameraCfg:
+    ) -> TiledCameraCfg:
         """get the front camera configuration
         
         Args:
@@ -49,12 +50,12 @@ class CameraBaseCfg:
             data_types: data type list
             
         Returns:
-            CameraCfg: camera configuration
+            TiledCameraCfg: camera configuration
         """
         if data_types is None:
             data_types = ["rgb"]
 
-        return CameraCfg(
+        return TiledCameraCfg(
             prim_path=prim_path,
             update_period=update_period,
             height=height,
@@ -66,7 +67,7 @@ class CameraBaseCfg:
                 horizontal_aperture=horizontal_aperture,
                 clipping_range=clipping_range
             ),
-            offset=CameraCfg.OffsetCfg(
+            offset=TiledCameraCfg.OffsetCfg(
                 pos=pos_offset,
                 rot=rot_offset,
                 convention="ros"
@@ -84,11 +85,11 @@ class CameraPresets:
     """
     
     @classmethod
-    def g1_front_camera(cls) -> CameraCfg:
+    def g1_front_camera(cls, **kwargs) -> TiledCameraCfg:
         """front camera configuration"""
-        return CameraBaseCfg.get_camera_config()
+        return CameraBaseCfg.get_camera_config(**kwargs)
     @classmethod
-    def g1_world_camera(cls) -> CameraCfg:
+    def g1_world_camera(cls) -> TiledCameraCfg:
         """front camera configuration"""
         return CameraBaseCfg.get_camera_config(prim_path="/World/envs/env_.*/Robot/d435_link/PerspectiveCamera_robot",
                                                     pos_offset=(-0.9, 0.0, 0.0),
@@ -97,7 +98,7 @@ class CameraPresets:
                                                     horizontal_aperture=27)
     
     @classmethod
-    def left_gripper_wrist_camera(cls) -> CameraCfg:
+    def left_gripper_wrist_camera(cls) -> TiledCameraCfg:
         """left wrist camera configuration"""
         return CameraBaseCfg.get_camera_config(
             prim_path="/World/envs/env_.*/Robot/left_hand_base_link/left_wrist_camera",
@@ -113,7 +114,7 @@ class CameraPresets:
             rot_offset=(-0.34202, 0.93969, 0, 0),
         )
     @classmethod
-    def right_gripper_wrist_camera(cls) -> CameraCfg:
+    def right_gripper_wrist_camera(cls) -> TiledCameraCfg:
         """right wrist camera configuration"""
         return CameraBaseCfg.get_camera_config(
             prim_path="/World/envs/env_.*/Robot/right_hand_base_link/right_wrist_camera",
@@ -129,7 +130,7 @@ class CameraPresets:
             rot_offset=(-0.34202, 0.93969, 0, 0),
         ) 
     @classmethod
-    def left_dex3_wrist_camera(cls) -> CameraCfg:
+    def left_dex3_wrist_camera(cls) -> TiledCameraCfg:
         """left wrist camera configuration"""
         return CameraBaseCfg.get_camera_config(
             prim_path="/World/envs/env_.*/Robot/left_hand_camera_base_link/left_wrist_camera",
@@ -145,7 +146,7 @@ class CameraPresets:
             rot_offset=(0.00539,0.86024,0.0424, 0.50809),
         )
     @classmethod
-    def right_dex3_wrist_camera(cls) -> CameraCfg:
+    def right_dex3_wrist_camera(cls) -> TiledCameraCfg:
         """right wrist camera configuration"""
         return CameraBaseCfg.get_camera_config(
             prim_path="/World/envs/env_.*/Robot/right_hand_camera_base_link/right_wrist_camera",
@@ -162,7 +163,7 @@ class CameraPresets:
         ) 
     
     @classmethod
-    def left_inspire_wrist_camera(cls) -> CameraCfg:
+    def left_inspire_wrist_camera(cls) -> TiledCameraCfg:
         """left wrist camera configuration"""
         return CameraBaseCfg.get_camera_config(
             prim_path="/World/envs/env_.*/Robot/left_hand_camera_base_link/left_wrist_camera",
@@ -178,7 +179,7 @@ class CameraPresets:
             rot_offset=(0.00539,0.86024,0.0424, 0.50809),
         )
     @classmethod
-    def right_inspire_wrist_camera(cls) -> CameraCfg:
+    def right_inspire_wrist_camera(cls) -> TiledCameraCfg:
         """right wrist camera configuration"""
         return CameraBaseCfg.get_camera_config(
             prim_path="/World/envs/env_.*/Robot/right_hand_camera_base_link/right_wrist_camera",

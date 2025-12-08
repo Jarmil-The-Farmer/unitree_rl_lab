@@ -2,7 +2,7 @@
 # Skript pro zabití všech běžících instancí IsaacLab (bash ./isaaclab.sh ...)
 
 echo "🔍 Hledám běžící procesy IsaacLab..."
-pids=$(ps aux | grep "[i]saaclab" | awk '{print $2}')
+pids=$(ps aux | grep -E '[i]saaclab|python .*play\.py|python .*play2\.py|python .*train\.py' | awk '{print $2}')
 
 if [ -z "$pids" ]; then
   echo "✅ Žádné běžící IsaacLab procesy nenalezeny."

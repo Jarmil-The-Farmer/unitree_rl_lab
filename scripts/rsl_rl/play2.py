@@ -172,29 +172,9 @@ def main():
 
     import omni.usd
     from pxr import UsdGeom, Gf
+
     stage = omni.usd.get_context().get_stage()
 
-
-    # robot link
-    robot_head = stage.GetPrimAtPath("/World/envs/env_0/Robot/d435_link")
-
-    # vytvoř nový camera prim
-    cam_prim = stage.DefinePrim("/World/envs/env_0/Robot/d435_link/front_cam", "Camera")
-
-    # nastav relativní pozici kamery (lokální frame d435_linku)
-    xform = UsdGeom.Xformable(cam_prim)
-    xform.AddTranslateOp().Set(Gf.Vec3d(0.0, 0.0, 0.1))
-    xform.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, 0))
-
-    camera = Camera(
-        prim_path="/World/envs/env_0/Robot/d435_link/front_cam",  # cesta primu; ujisti se, že nekoliduje s existujícími primy
-        position=np.array([0.0, 0.0, 0.5]),  # příklad pozice (v relat. frame světa nebo relativně k robotovi)
-        resolution=(1280, 720),
-        orientation=rot_utils.euler_angles_to_quats(np.array([0.0, 0.0, 0.0]), degrees=True),
-        frequency=10  # snímků za sekundu
-    )
-    camera.initialize()
-    #camera.add_motion_vectors_to_frame()
     plt.ion()
 
     # simulate environment
@@ -206,24 +186,34 @@ def main():
         cmd = env.unwrapped.command_manager.get_command("base_velocity")
         #cmd[0] = torch.tensor([1, 0.0, 0.0], device=env.unwrapped.device)  # forward velocity
         cmd[0] = torch.tensor(device_action, device=env.unwrapped.device)
+        scene = env.unwrapped.scene
+        camera = scene.sensors["head_camera"]
+
+        #print(camera.data)
+
+        rgb = camera.data.output["rgb"]  # torch tensor: (num_envs, H, W, C)
+
+        # vezmeme jen první env:
+        frame = rgb[0].cpu().numpy()  # typicky uint8, shape (H, W, 4) nebo (H, W, 3)
+
+        # když chceš jen RGB bez alfy:
+        frame_rgb = frame[..., :3]
+
+        plt.clf()
+        plt.imshow(frame_rgb)
+        plt.pause(0.001)
 
         #print(cmd)
-
-        rgb = camera.get_rgba()
-        #print(rgb)
-        #print(rgb.shape)
-        if rgb.shape[0] > 0:
-            plt.clf()
-            plt.imshow(rgb)
-        #print(camera.get_current_frame())
-            plt.pause(0.001)     # nechá GUI "nadechnout"
 
         # run everything in inference mode
         with torch.inference_mode():
             # agent stepping
             actions = policy(obs)
+            full_actions = torch.zeros(1, 53, device=actions.device)
+            full_actions[:, :29] = actions  # map první klouby
+# Zbytek ruce necháme volný / v defaultu
             # env stepping
-            obs, _, _, _ = env.step(actions)
+            obs, _, _, _ = env.step(full_actions)
         if args_cli.video:
             timestep += 1
             # Exit the play loop after recording one video
