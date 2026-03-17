@@ -40,10 +40,18 @@ Currently supports Unitree **Go2**, **H1** and **G1-29dof** robots.
 - Download unitree robot description files
 
   *Method 1: Using USD Files*
-  - Download unitree usd files from [unitree_model](https://huggingface.co/datasets/unitreerobotics/unitree_model/tree/main), keeping folder structure
+  - The USD model repository uses **Git LFS** for large mesh files. Install it first:
+    ```bash
+    sudo apt install git-lfs
+    ```
+  - Clone the repository and pull all LFS files:
     ```bash
     git clone https://huggingface.co/datasets/unitreerobotics/unitree_model
+    cd unitree_model
+    git lfs install
+    git lfs pull
     ```
+    > **Note:** Without `git lfs pull`, the `*_base.usd` mesh files will be downloaded as small pointer stubs instead of the actual data, causing a `ValueError: No contact sensors added to the prim` error at runtime.
   - Config `UNITREE_MODEL_DIR` in `source/unitree_rl_lab/unitree_rl_lab/assets/robots/unitree.py`.
 
     ```bash
